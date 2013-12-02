@@ -2,6 +2,8 @@
 See [erformance of a C++11 Signal System](http://www.testbit.eu/2013/cpp11-signal-system-performance/) for
 the original source code, as well as performance measurements compared to other signalling systems.
 
+The original author, Tim Janik, licensed the source code to the public domain [CC0 1.0 Universal (CC0 1.0) ](http://creativecommons.org/publicdomain/zero/1.0/).
+
 ## Declare a signal
 This example declares a signal 'sig' that takes three arguments and returns a char.
 ```c++
