@@ -9,7 +9,7 @@ This example declares a signal 'sig' that takes three arguments and returns a ch
 Simple::Signal<char (float, int, std::string)> sig;
 ```
 ## Connect to a signal
-This exampple connects to a static function.
+This exampple connects 'sig' to a static function.
 It is also possible to connect to member functions or lambda functions.
 ```c++
 static char float_callback (float f, int, std::string) {
