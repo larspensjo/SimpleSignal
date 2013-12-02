@@ -1,6 +1,6 @@
 // CC0 Public Domain: http://creativecommons.org/publicdomain/zero/1.0/
-#ifndef __SIMPLE_SIGNAL_HH__
-#define __SIMPLE_SIGNAL_HH__
+#ifndef SIMPLE_SIGNAL_H__
+#define SIMPLE_SIGNAL_H__
 
 #include <unistd.h>
 #include <assert.h>
@@ -16,7 +16,7 @@ namespace Lib {
 template<typename,typename> class ProtoSignal;   // undefined
 
 /// CollectorInvocation invokes signal handlers differently depending on return type.
-template<typename,typename> class CollectorInvocation;
+template<typename,typename> struct CollectorInvocation;
 
 /// CollectorLast returns the result of the last signal handler from a signal emission.
 template<typename Result>
@@ -75,14 +75,14 @@ private:
     SignalLink *next, *prev;
     CbFunction  function;
     int         ref_count;
-    explicit    SignalLink (const CbFunction &cbf) : next (NULL), prev (NULL), function (cbf), ref_count (1) {}
+    explicit    SignalLink (const CbFunction &cbf) : next (nullptr), prev (nullptr), function (cbf), ref_count (1) {}
     /*dtor*/   ~SignalLink ()           { assert (ref_count == 0); }
     void        incref     ()           { ref_count += 1; assert (ref_count > 0); }
     void        decref     ()           { ref_count -= 1; if (!ref_count) delete this; else assert (ref_count > 0); }
     void
     unlink ()
     {
-      function = NULL;
+      function = nullptr;
       if (next)
         next->prev = prev;
       if (prev)
@@ -106,7 +106,7 @@ private:
     {
       if (cbf == function)
         {
-          function = NULL;      // deactivate static head
+          function = nullptr;      // deactivate static head
           return true;
         }
       for (SignalLink *link = this->next ? this->next : this; link != this; link = link->next)
@@ -144,11 +144,11 @@ private:
       }
   }
 public:
-  /// ProtoSignal constructor, connects default callback if non-NULL.
+  /// ProtoSignal constructor, connects default callback if non-nullptr.
   ProtoSignal (const CbFunction &method) :
-    callback_ring_ (NULL)
+    callback_ring_ (nullptr)
   {
-    if (method != NULL)
+    if (method != nullptr)
       {
         ensure_ring();
         callback_ring_->function = method;
@@ -167,9 +167,9 @@ public:
       }
   }
   /// Operator to add a new function or lambda as signal handler, returns a handler connection ID.
-  size_t operator+= (const CbFunction &cb)      { ensure_ring(); return callback_ring_->add_before (cb); }
+  size_t connect (const CbFunction &cb)      { ensure_ring(); return callback_ring_->add_before (cb); }
   /// Operator to remove a signal handler through it connection ID, returns if a handler was removed.
-  bool   operator-= (size_t connection)         { return callback_ring_ ? callback_ring_->remove_sibling (connection) : false; }
+  bool   disconnect (size_t connection)         { return callback_ring_ ? callback_ring_->remove_sibling (connection) : false; }
   /// Emit a signal, i.e. invoke all its callbacks and collect return types with the Collector.
   CollectorResult
   emit (Args... args)
@@ -181,7 +181,7 @@ public:
     link->incref();
     do
       {
-        if (link->function != NULL)
+        if (link->function != nullptr)
           {
             const bool continue_emission = this->invoke (collector, link->function, args...);
             if (!continue_emission)
@@ -195,6 +195,27 @@ public:
     while (link != callback_ring_);
     link->decref();
     return collector.result();
+  }
+  // Number of connected slots.
+  int
+  size ()
+  {
+    int size = 0;
+    SignalLink *link = callback_ring_;
+    link->incref();
+    do
+      {
+        if (link->function != 0)
+          {
+            size++;
+          }
+        SignalLink *old = link;
+        link = old->next;
+        link->incref();
+        old->decref();
+      }
+    while (link != callback_ring_);
+    return size;
   }
 };
 
@@ -289,42 +310,39 @@ private:
 
 } // Simple
 
-#endif // __SIMPLE_SIGNAL_HH__
+
+#endif  // SIMPLE_SIGNAL_H__
 
 
-
-#ifndef DISABLE_TESTS
+#ifdef ENABLE_SIMPLE_SIGNAL_TESTS
 
 #include <string>
 #include <stdarg.h>
+#include <time.h>
+#include <sys/time.h>
+#include <stdio.h>
+#include <ctime>
+#include <cstdlib>
 
 static std::string string_printf (const char *format, ...) __attribute__ ((__format__ (__printf__, 1, 2)));
 static std::string
 string_printf (const char *format, ...)
 {
   std::string result;
-  char *str = NULL;
+  char str[1000];
   va_list args;
   va_start (args, format);
-  if (vasprintf (&str, format, args) >= 0)
+  if (vsnprintf (str, sizeof str, format, args) >= 0)
     result = str;
   va_end (args);
-  if (str)
-    free (str);
   return result;
 }
 
 static uint64_t
 timestamp_benchmark ()
 {
-  struct timespec tp = { 0, 0 };
-  if (__builtin_expect (clock_gettime (CLOCK_MONOTONIC, &tp) < 0, 0))
-    {
-      perror ("failed in clock_gettime");
-      exit (-1);
-    }
-  uint64_t stamp = tp.tv_sec * 1000000000ULL + tp.tv_nsec;
-  return stamp;
+  auto now = std::clock();
+  return 1.0e9 / CLOCKS_PER_SEC * now;
 }
 
 struct TestCounter {
@@ -360,22 +378,22 @@ public:
   {
     accu = "";
     Simple::Signal<char (float, int, std::string)> sig1;
-    size_t id1 = sig1 += float_callback;
-    size_t id2 = sig1 += [] (float, int i, std::string) { accu += string_printf ("int: %d\n", i); return 0; };
-    size_t id3 = sig1 += [] (float, int, const std::string &s) { accu += string_printf ("string: %s\n", s.c_str()); return 0; };
+    size_t id1 = sig1.connect(float_callback);
+    size_t id2 = sig1.connect([] (float, int i, std::string) { accu += string_printf ("int: %d\n", i); return 0; });
+    size_t id3 = sig1.connect([] (float, int, const std::string &s) { accu += string_printf ("string: %s\n", s.c_str()); return 0; });
     sig1.emit (.3, 4, "huhu");
     bool success;
-    success = sig1 -= id1; assert (success == true);  success = sig1 -= id1; assert (success == false);
-    success = sig1 -= id2; assert (success == true);  success = sig1 -= id3; assert (success == true);
-    success = sig1 -= id3; assert (success == false); success = sig1 -= id2; assert (success == false);
+    success = sig1.disconnect(id1); assert (success == true);  success = sig1.disconnect(id1); assert (success == false);
+    success = sig1.disconnect(id2); assert (success == true);  success = sig1.disconnect(id3); assert (success == true);
+    success = sig1.disconnect(id3); assert (success == false); success = sig1.disconnect(id2); assert (success == false);
     Foo foo;
-    sig1 += Simple::slot (foo, &Foo::foo_bool);
-    sig1 += Simple::slot (&foo, &Foo::foo_bool);
+    sig1.connect(Simple::slot (foo, &Foo::foo_bool));
+    sig1.connect(Simple::slot (&foo, &Foo::foo_bool));
     sig1.emit (.5, 1, "12");
 
     Simple::Signal<void (std::string, int)> sig2;
-    sig2 += [] (std::string msg, int) { accu += string_printf ("msg: %s", msg.c_str()); };
-    sig2 += [] (std::string, int d)   { accu += string_printf (" *%d*\n", d); };
+    sig2.connect([] (std::string msg, int) { accu += string_printf ("msg: %s", msg.c_str()); });
+    sig2.connect([] (std::string, int d)   { accu += string_printf (" *%d*\n", d); });
     sig2.emit ("in sig2", 17);
 
     accu += "DONE";
@@ -403,11 +421,11 @@ class TestCollectorVector {
   run ()
   {
     Simple::Signal<int (), Simple::CollectorVector<int>> sig_vector;
-    sig_vector += handler777;
-    sig_vector += handler42;
-    sig_vector += handler1;
-    sig_vector += handler42;
-    sig_vector += handler777;
+    sig_vector.connect(handler777);
+    sig_vector.connect(handler42);
+    sig_vector.connect(handler1);
+    sig_vector.connect(handler42);
+    sig_vector.connect(handler777);
     std::vector<int> results = sig_vector.emit();
     const std::vector<int> reference = { 777, 42, 1, 42, 777, };
     assert (results == reference);
@@ -419,16 +437,16 @@ class TestCollectorUntil0 {
   TestCollectorUntil0() : check1 (0), check2 (0) {}
   bool handler_true  ()  { check1 = true; return true; }
   bool handler_false ()  { check2 = true; return false; }
-  bool handler_abort ()  { abort(); }
+  bool handler_abort ()  { std::abort(); }
   public:
   static void
   run ()
   {
     TestCollectorUntil0 self;
     Simple::Signal<bool (), Simple::CollectorUntil0<bool>> sig_until0;
-    sig_until0 += Simple::slot (self, &TestCollectorUntil0::handler_true);
-    sig_until0 += Simple::slot (self, &TestCollectorUntil0::handler_false);
-    sig_until0 += Simple::slot (self, &TestCollectorUntil0::handler_abort);
+    sig_until0.connect(Simple::slot (self, &TestCollectorUntil0::handler_true));
+    sig_until0.connect(Simple::slot (self, &TestCollectorUntil0::handler_false));
+    sig_until0.connect(Simple::slot (self, &TestCollectorUntil0::handler_abort));
     assert (!self.check1 && !self.check2);
     const bool result = sig_until0.emit();
     assert (!result && self.check1 && self.check2);
@@ -440,16 +458,16 @@ class TestCollectorWhile0 {
   TestCollectorWhile0() : check1 (0), check2 (0) {}
   bool handler_0     ()  { check1 = true; return false; }
   bool handler_1     ()  { check2 = true; return true; }
-  bool handler_abort ()  { abort(); }
+  bool handler_abort ()  { std::abort(); }
   public:
   static void
   run ()
   {
     TestCollectorWhile0 self;
     Simple::Signal<bool (), Simple::CollectorWhile0<bool>> sig_while0;
-    sig_while0 += Simple::slot (self, &TestCollectorWhile0::handler_0);
-    sig_while0 += Simple::slot (self, &TestCollectorWhile0::handler_1);
-    sig_while0 += Simple::slot (self, &TestCollectorWhile0::handler_abort);
+    sig_while0.connect(Simple::slot (self, &TestCollectorWhile0::handler_0));
+    sig_while0.connect(Simple::slot (self, &TestCollectorWhile0::handler_1));
+    sig_while0.connect(Simple::slot (self, &TestCollectorWhile0::handler_abort));
     assert (!self.check1 && !self.check2);
     const bool result = sig_while0.emit();
     assert (result == true && self.check1 && self.check2);
@@ -460,18 +478,18 @@ static void
 bench_simple_signal()
 {
   Simple::Signal<void (void*, uint64_t)> sig_increment;
-  sig_increment += test_counter_add2;
+  sig_increment.connect(test_counter_add2);
   const uint64_t start_counter = TestCounter::get();
   const uint64_t benchstart = timestamp_benchmark();
   uint64_t i;
   for (i = 0; i < 999999; i++)
     {
-      sig_increment.emit (NULL, 1);
+      sig_increment.emit (nullptr, 1);
     }
   const uint64_t benchdone = timestamp_benchmark();
   const uint64_t end_counter = TestCounter::get();
   assert (end_counter - start_counter == i);
-  printf ("OK\n  Benchmark: Simple::Signal: %fns per emission (size=%zu): ", size_t (benchdone - benchstart) * 1.0 / size_t (i),
+  printf ("OK\n  Benchmark: Simple::Signal: %fns per emission (size=%u): ", size_t (benchdone - benchstart) * 1.0 / size_t (i),
           sizeof (sig_increment));
 }
 
@@ -484,7 +502,7 @@ bench_callback_loop()
   uint64_t i;
   for (i = 0; i < 999999; i++)
     {
-      counter_increment (NULL, 1);
+      counter_increment (nullptr, 1);
     }
   const uint64_t benchdone = timestamp_benchmark();
   const uint64_t end_counter = TestCounter::get();
@@ -543,4 +561,4 @@ main (int   argc,
 
 #endif // DISABLE_TESTS
 
-// g++ -Wall -O2 -std=gnu++0x -pthread simplesignal.cc -lrt && ./a.out
+// g++ -Wall -O2 -std=gnu++11 -pthread test.cpp && ./a.out
