@@ -101,22 +101,6 @@ private:
       return size_t (link);
     }
     bool
-    deactivate (const CbFunction &cbf)
-    {
-      if (cbf == function)
-        {
-          function = nullptr;      // deactivate static head
-          return true;
-        }
-      for (SignalLink *link = this->next ? this->next : this; link != this; link = link->next)
-        if (cbf == link->function)
-          {
-            link->unlink();     // deactivate and unlink sibling
-            return true;
-          }
-      return false;
-    }
-    bool
     remove_sibling (size_t id)
     {
       for (SignalLink *link = this->next ? this->next : this; link != this; link = link->next)
