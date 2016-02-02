@@ -20,7 +20,7 @@ template<typename,typename> struct CollectorInvocation;
 /// CollectorLast returns the result of the last signal handler from a signal emission.
 template<typename Result>
 struct CollectorLast {
-  typedef Result CollectorResult;
+  using CollectorResult = Result;
   explicit        CollectorLast ()              : last_() {}
   inline bool     operator()    (Result r)      { last_ = r; return true; }
   CollectorResult result        ()              { return last_; }
@@ -36,7 +36,7 @@ struct CollectorDefault : CollectorLast<Result>
 /// CollectorDefault specialisation for signals with void return type.
 template<>
 struct CollectorDefault<void> {
-  typedef void CollectorResult;
+  using CollectorResult = void;
   void                  result     ()           {}
   inline bool           operator() (void)       { return true; }
 };
@@ -65,9 +65,9 @@ struct CollectorInvocation<Collector, void (Args...)> {
 template<class Collector, class R, class... Args>
 class ProtoSignal<R (Args...), Collector> : private CollectorInvocation<Collector, R (Args...)> {
 protected:
-  typedef std::function<R (Args...)> CbFunction;
-  typedef typename CbFunction::result_type Result;
-  typedef typename Collector::CollectorResult CollectorResult;
+  using CbFunction = std::function<R (Args...)>;
+  using Result = typename CbFunction::result_type;
+  using CollectorResult = typename Collector::CollectorResult;
 private:
   /// SignalLink implements a doubly-linked ring with ref-counted nodes containing the signal handlers.
   struct SignalLink {
@@ -224,8 +224,8 @@ template <typename SignalSignature, class Collector = Lib::CollectorDefault<type
 struct Signal /*final*/ :
     Lib::ProtoSignal<SignalSignature, Collector>
 {
-  typedef Lib::ProtoSignal<SignalSignature, Collector> ProtoSignal;
-  typedef typename ProtoSignal::CbFunction             CbFunction;
+  using ProtoSignal = Lib::ProtoSignal<SignalSignature, Collector>;
+  using CbFunction = typename ProtoSignal::CbFunction;
   /// Signal constructor, supports a default callback as argument.
   Signal (const CbFunction &method = CbFunction()) : ProtoSignal (method) {}
 };
@@ -247,7 +247,7 @@ slot (Class *object, R (Class::*method) (Args...))
 /// Keep signal emissions going while all handlers return !0 (true).
 template<typename Result>
 struct CollectorUntil0 {
-  typedef Result CollectorResult;
+  using CollectorResult = Result;
   explicit                      CollectorUntil0 ()      : result_() {}
   const CollectorResult&        result          ()      { return result_; }
   inline bool
@@ -263,7 +263,7 @@ private:
 /// Keep signal emissions going while all handlers return 0 (false).
 template<typename Result>
 struct CollectorWhile0 {
-  typedef Result CollectorResult;
+  using CollectorResult = Result;
   explicit                      CollectorWhile0 ()      : result_() {}
   const CollectorResult&        result          ()      { return result_; }
   inline bool
@@ -279,7 +279,7 @@ private:
 /// CollectorVector returns the result of the all signal handlers from a signal emission in a std::vector.
 template<typename Result>
 struct CollectorVector {
-  typedef std::vector<Result> CollectorResult;
+  using CollectorResult = std::vector<Result>;
   const CollectorResult&        result ()       { return result_; }
   inline bool
   operator() (Result r)
