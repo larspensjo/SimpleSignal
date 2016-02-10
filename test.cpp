@@ -176,7 +176,7 @@ bench_simple_signal()
   const uint64_t end_counter = TestCounter::get();
   assert (end_counter - start_counter == i);
   printf ("OK\n  Benchmark: Simple::Signal: %fns per emission (size=%u): ", size_t (benchdone - benchstart) * 1.0 / size_t (i),
-          sizeof (sig_increment));
+          (unsigned int) sizeof (sig_increment));
 }
 
 static void
