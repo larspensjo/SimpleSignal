@@ -114,6 +114,7 @@ class TestCollectorVector {
     sig_vector.connect(handler777);
     std::vector<int> results = sig_vector.emit();
     const std::vector<int> reference = { 777, 42, 1, 42, 777, };
+    assert(5 == sig_vector.size());
     assert (results == reference);
   }
 };
