@@ -1,6 +1,7 @@
 #include "SimpleSignal.h"
 
 // g++ -Wall -O2 -std=gnu++11 -pthread test.cpp && ./a.out
+// append -fsanitize=address for memory debugging
 
 #include <string>
 #include <stdarg.h>
