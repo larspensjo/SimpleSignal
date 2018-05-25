@@ -198,6 +198,7 @@ public:
         old->decref();
       }
     while (link != callback_ring_);
+    link->decref();
     return size;
   }
 };
