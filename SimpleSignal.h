@@ -1,8 +1,7 @@
 // CC0 Public Domain: http://creativecommons.org/publicdomain/zero/1.0/
 #pragma once
 
-// #include <unistd.h>
-// #include <stdint.h>
+#include <memory>
 #include <functional>
 #include <list>
 #include <vector>
@@ -46,7 +45,7 @@ struct CollectorDefault<void> {
 template<class Collector, class R, class... Args>
 struct CollectorInvocation<Collector, R (Args...)> {
   inline bool
-  invoke (Collector &collector, const std::function<R (Args...)> &cbf, Args... args)
+  invoke (Collector &collector, const std::function<R (Args...)> &cbf, Args... args) const
   {
     return collector (cbf (args...));
   }
@@ -56,7 +55,7 @@ struct CollectorInvocation<Collector, R (Args...)> {
 template<class Collector, class... Args>
 struct CollectorInvocation<Collector, void (Args...)> {
   inline bool
-  invoke (Collector &collector, const std::function<void (Args...)> &cbf, Args... args)
+  invoke (Collector &collector, const std::function<void (Args...)> &cbf, Args... args) const
   {
     cbf (args...); return collector();
   }
@@ -112,7 +111,7 @@ public:
 
   /// Emit a signal, i.e. invoke all its callbacks and collect return types with the Collector.
   CollectorResult
-  emit (Args... args)
+  emit (Args... args) const
   {
     Collector collector;
     for (auto &slot : callback_list_) {

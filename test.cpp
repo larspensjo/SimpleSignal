@@ -6,12 +6,16 @@
 #include <string>
 #include <stdarg.h>
 #include <time.h>
-#include <sys/time.h>
-#include <stdio.h>
 #include <ctime>
 #include <cstdlib>
+#include <cassert>
 
+#ifndef _MSC_VER
+#include <sys/time.h>
+#include <stdio.h>
 static std::string string_printf (const char *format, ...) __attribute__ ((__format__ (__printf__, 1, 2)));
+#endif
+
 static std::string
 string_printf (const char *format, ...)
 {
