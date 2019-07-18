@@ -125,7 +125,7 @@ public:
   }
   // Number of connected slots.
   std::size_t
-  size ()
+  size () const
   {
     return callback_list_.size();
   }
